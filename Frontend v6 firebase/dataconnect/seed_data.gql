@@ -1,0 +1,56 @@
+mutation CreateSeedData @transaction @auth(level: PUBLIC, insecureReason: "This operation is used to seed the database with demo data and is safe to expose to the public.") {
+  user_insertMany(data: [
+    {
+      id: "550e8400-e29b-41d4-a716-446655440000",
+      username: "demouser1",
+      email: "demouser1@example.com",
+      createdAt: "2024-01-01T00:00:00Z",
+    },
+    {
+      id: "550e8400-e29b-41d4-a716-446655440001",
+      username: "demouser2",
+      email: "demouser2@example.com",
+      createdAt: "2024-01-01T00:00:00Z",
+    }
+  ])
+  game_insertMany(data: [
+    {
+      id: "550e8400-e29b-41d4-a716-446655440002",
+      title: "Example Game 1",
+      releaseYear: 2020,
+      createdAt: "2024-01-01T00:00:00Z",
+      developer: "Example Dev 1",
+      publisher: "Example Pub 1",
+    },
+    {
+      id: "550e8400-e29b-41d4-a716-446655440003",
+      title: "Example Game 2",
+      releaseYear: 2022,
+      createdAt: "2024-01-01T00:00:00Z",
+            developer: "Example Dev 2",
+      publisher: "Example Pub 2",
+    }
+  ])
+  gameList_insertMany(data: [
+    {
+      id: "550e8400-e29b-41d4-a716-446655440004",
+      name: "Demo's Favorite Games",
+      description: "A list of games that Demo User 1 likes.",
+      isPublic: true,
+      userId: "550e8400-e29b-41d4-a716-446655440000",
+      createdAt: "2024-01-01T00:00:00Z",
+    }
+  ])
+  gameListItem_insertMany(data: [
+    {
+      gameListId: "550e8400-e29b-41d4-a716-446655440004",
+      gameId: "550e8400-e29b-41d4-a716-446655440002",
+      position: 1
+    },
+     {
+      gameListId: "550e8400-e29b-41d4-a716-446655440004",
+      gameId: "550e8400-e29b-41d4-a716-446655440003",
+      position: 2
+    }
+  ])
+}

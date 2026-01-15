@@ -1,0 +1,55 @@
+type User @table {
+  username: String!
+  email: String!
+  createdAt: Timestamp!
+  displayName: String
+  profilePictureUrl: String
+  bio: String
+}
+
+type Game @table {
+  title: String!
+  releaseYear: Int!
+  createdAt: Timestamp!
+  description: String
+  genres: [String]
+  platforms: [String]
+  coverImageUrl: String
+  developer: String
+  publisher: String
+}
+
+type GameSession @table {
+  sessionDate: Date!
+  durationMinutes: Int!
+  platform: String!
+  notes: String
+  achievementsUnlocked: [String]
+  user: User
+  game: Game
+}
+
+type Review @table {
+  rating: Int!
+  createdAt: Timestamp!
+  updatedAt: Timestamp!
+  reviewText: String
+  isPublic: Boolean
+  user: User
+  game: Game
+}
+
+type GameList @table {
+  name: String!
+  createdAt: Timestamp!
+  isPublic: Boolean!
+  description: String
+  user: User
+}
+
+type GameListItem @table {
+  position: Int!
+  notesOnGame: String
+  gameList: GameList
+  game: Game
+}

@@ -1,0 +1,41 @@
+mutation AddNewUser($email: String!, $username: String!) @auth(level: USER) {
+  user_insert(data: { email: $email, username: $username, createdAt_expr: "request.time", id_expr: "uuidV4()" })
+}
+
+query GetMyProfile @auth(level: USER) {
+  user(key: { id_expr: "auth.uid" }) {
+    id
+    email
+    username
+    displayName
+    bio
+    profilePictureUrl
+    createdAt
+  }
+}
+
+mutation CreateNewGameList(
+  $name: String!
+  $description: String
+  $isPublic: Boolean!
+) @auth(level: USER) {
+  gameList_insert(
+    data: {
+      name: $name
+      description: $description
+      isPublic: $isPublic
+      createdAt_expr: "request.time"
+      userId_expr: "auth.uid"
+    }
+  )
+}
+
+query ListPublicGameLists @auth(level: PUBLIC, insecureReason: "This operation is safe to expose to the public") {
+  gameLists(where: { isPublic: { eq: true } }) {
+    id
+    name
+    description
+    createdAt
+    userId
+  }
+}

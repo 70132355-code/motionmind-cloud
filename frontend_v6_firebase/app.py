@@ -1379,6 +1379,67 @@ def health():
     """Simple health check endpoint for Render"""
     return jsonify(status="ok"), 200
 
+@app.route('/process-frame', methods=['POST'])
+def process_frame():
+    """Process a single frame from the browser camera and return gesture detection results"""
+    try:
+        import base64
+        
+        data = request.json
+        if not data or 'image' not in data:
+            return jsonify(error="No image data provided"), 400
+        
+        # Decode base64 image
+        image_data = data['image'].split(',')[1] if ',' in data['image'] else data['image']
+        img_bytes = base64.b64decode(image_data)
+        np_img = np.frombuffer(img_bytes, np.uint8)
+        frame = cv2.imdecode(np_img, cv2.IMREAD_COLOR)
+        
+        if frame is None:
+            return jsonify(error="Failed to decode image"), 400
+        
+        # Process with MediaPipe
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        
+        # Create a temporary Hands instance for processing
+        hands_instance = mp_hands.Hands(
+            static_image_mode=True,
+            min_detection_confidence=MIN_DETECTION_CONFIDENCE,
+            min_tracking_confidence=MIN_TRACKING_CONFIDENCE,
+            max_num_hands=1
+        )
+        
+        results = hands_instance.process(rgb_frame)
+        hands_instance.close()
+        
+        # Detect gesture
+        gesture = "none"
+        hand_position_data = {"x": 0, "y": 0, "visible": False}
+        
+        if results and results.multi_hand_landmarks:
+            hand_landmarks = results.multi_hand_landmarks[0]
+            gesture = detect_gesture(hand_landmarks)
+            
+            # Get hand position
+            index_tip = hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP]
+            hand_position_data = {
+                "x": index_tip.x,
+                "y": index_tip.y,
+                "z": index_tip.z,
+                "visible": True
+            }
+        
+        return jsonify({
+            "gesture": gesture,
+            "hand_position": hand_position_data
+        })
+        
+    except Exception as e:
+        print(f"[Process Frame] Error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify(error=str(e)), 500
+
 @app.route('/')
 def index():
     try:
@@ -1707,58 +1768,44 @@ def pong_state():
         print(f"Pong state error: {str(e)}")
         return jsonify(score=0, gameOver=False), 500
 
-# --- CAMERA CONTROL ROUTES ---
+# --- DEPRECATED CAMERA CONTROL ROUTES (LEGACY - USE BROWSER CAMERA INSTEAD) ---
 @app.route('/camera_status')
-@firebase_auth_required
 def camera_status():
-    status = {
-        'active': camera_stream.active, 
-        'requested': camera_stream.requested, 
-        'error': camera_stream.error,
-        'initializing': camera_stream.initializing
-    }
-    # Only log when there are changes or errors
-    if camera_stream.error or camera_stream.initializing:
-        print(f"[Camera Status] {status}")
-    return jsonify(**status)
+    """Deprecated: Camera is now browser-controlled, not server-side"""
+    return jsonify(
+        active=False, 
+        requested=False, 
+        error="Camera is browser-controlled. Use /process-frame endpoint.",
+        initializing=False,
+        deprecated=True
+    )
 
 @app.route('/start_camera', methods=['POST'])
-@firebase_auth_required
 def start_camera():
-    global camera_initializing, camera_active, camera_error
-    
-    # Check if camera is already initializing
-    if camera_stream.initializing or camera_initializing:
-        return jsonify(success=False, error="Camera is already initializing")
-    
-    # Check if camera is already active
-    if camera_stream.active:
-        camera_active = True
-        return jsonify(success=True, message="Camera is already active")
-    
-    # Start camera initialization
-    print("[Camera] Starting camera initialization...")
-    init_thread = threading.Thread(target=initialize_camera)
-    init_thread.daemon = True
-    init_thread.start()
-    return jsonify(success=True, message="Camera initialization started")
+    """Deprecated: Camera is now browser-controlled via getUserMedia()"""
+    return jsonify(
+        success=False, 
+        error="This endpoint is deprecated. Camera is now started in the browser using navigator.mediaDevices.getUserMedia()",
+        deprecated=True
+    ), 410  # 410 Gone
 
 @app.route('/stop_camera', methods=['POST'])
-@firebase_auth_required
 def stop_camera():
-    release_camera()
-    return jsonify(success=True, message="Camera stopped successfully")
+    """Deprecated: Camera is now browser-controlled"""
+    return jsonify(
+        success=False, 
+        error="This endpoint is deprecated. Stop the camera in the browser by stopping the MediaStream.",
+        deprecated=True
+    ), 410  # 410 Gone
 
 @app.route('/restart_camera', methods=['POST'])
-@firebase_auth_required
 def restart_camera():
-    release_camera()
-    time.sleep(1)  # Give time for resources to be released
-    # Start camera initialization in a separate thread
-    init_thread = threading.Thread(target=initialize_camera)
-    init_thread.daemon = True
-    init_thread.start()
-    return jsonify(success=True, message="Camera restart started")
+    """Deprecated: Camera is now browser-controlled"""
+    return jsonify(
+        success=False, 
+        error="This endpoint is deprecated. Restart camera by stopping and starting the browser MediaStream.",
+        deprecated=True
+    ), 410  # 410 Gone
 
 # --- CLEANUP ON APP SHUTDOWN ---
 @app.teardown_appcontext

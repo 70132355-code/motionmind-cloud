@@ -167,9 +167,10 @@
         </p>
         
         <div class="glass-panel webcam-container" aria-live="polite" aria-label="Webcam Feed">
-          <img id="webcam" src="" alt="Webcam Feed" />
+          <video id="video" autoplay playsinline style="width: 100%; max-width: 640px; border-radius: 8px;"></video>
+          <canvas id="canvas" hidden></canvas>
           <div class="webcam-loading" id="webcam-loading">
-            <i class="fas fa-video-slash"></i> Camera is off
+            <i class="fas fa-video-slash"></i> Camera initializing...
           </div>
           <div class="webcam-controls">
             <button id="start-camera-btn" class="btn small-btn" aria-label="Start Camera">
@@ -178,11 +179,8 @@
             <button id="stop-camera-btn" class="btn small-btn" aria-label="Stop Camera" style="display:none;">
               <i class="fas fa-video-slash"></i> Stop Camera
             </button>
-            <button id="restart-camera-btn" class="btn small-btn" aria-label="Restart Camera" style="display:none;">
-              <i class="fas fa-sync-alt"></i> Restart Camera
-            </button>
           </div>
-          <p class="webcam-instruction">Click "Start Camera" to begin gesture detection</p>
+          <p class="webcam-instruction" id="camera-status-text">Click "Start Camera" to begin gesture detection</p>
         </div>
         
         <!-- System Insights Strip -->

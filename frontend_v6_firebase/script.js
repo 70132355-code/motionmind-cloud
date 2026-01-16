@@ -1133,189 +1133,192 @@ function updateCameraUI() {
 
 // Dashboard camera controls
 if (startCameraBtn) {
-  startCameraBtn.addEventListener('click', () => {
+  startCameraBtn.addEventListener('click', async () => {
     console.log('[Camera] Start camera button clicked');
+    const video = document.getElementById('video');
+    const statusText = document.getElementById('camera-status-text');
+    const loadingDiv = document.getElementById('webcam-loading');
+    
     // Show loading state
     startCameraBtn.disabled = true;
     startCameraBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Starting...';
+    if (statusText) statusText.innerText = 'Requesting camera permission...';
+    if (loadingDiv) loadingDiv.style.display = 'flex';
     
-    fetch('/start_camera', { 
-      method: 'POST',
-      credentials: 'same-origin'  // Include cookies for session
-    })
-      .then(response => {
-        console.log('[Camera] Start camera response status:', response.status);
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response.json();
-      })
-      .then(data => {
-        console.log('[Camera] Start camera response:', data);
-        if (data.success) {
-          // Camera initialization started, wait for status update
-          console.log(data.message || 'Camera initialization started');
-          
-          // Poll for camera status until it's active or there's an error
-          const statusCheckInterval = setInterval(() => {
-            fetch('/camera_status', {
-              credentials: 'same-origin'  // Include cookies for session
-            })
-              .then(response => {
-                if (!response.ok) {
-                  throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-              })
-              .then(statusData => {
-                if (statusData.active) {
-                  clearInterval(statusCheckInterval);
-                  cameraActive = true;
-                  cameraRequested = true;
-                  cameraError = null;
-                  cameraInitializing = false;
-                  updateCameraUI();
-                  startWebcam();
-                  
-                  // Start gesture detection on current screen
-                  const currentScreen = Object.keys(screens).find(screenId => 
-                    screens[screenId] && screens[screenId].classList.contains('active')
-                  );
-                  
-                  if (currentScreen && currentScreen !== 'login' && currentScreen !== 'register' && 
-                      currentScreen !== 'profile' && currentScreen !== 'help') {
-                    
-                    // Start mini webcam first
-                    startMiniWebcam();
-                    
-                    // Then start gesture detection
-                    startGestureDetection(currentScreen);
-                    
-                    // Start screen-specific features
-                    if (currentScreen === 'whiteboard') {
-                      startGestureDrawing();
-                    } else if (currentScreen === 'presentation') {
-                      startPresentationControl();
-                    } else if (currentScreen === 'games' && currentGame) {
-                      if (currentGame === 'basketball') {
-                        initBasketball();
-                      } else if (currentGame === 'spells') {
-                        initSpells();
-                      } else if (currentGame === 'rps') {
-                        initRockPaperScissors();
-                      } else if (currentGame === 'snake') {
-                        initSnakeGame();
-                      }
-                    }
-                  }
-                } else if (statusData.error) {
-                  clearInterval(statusCheckInterval);
-                  cameraError = statusData.error;
-                  updateCameraUI();
-                  alert(cameraError);
-                } else if (!statusData.initializing) {
-                  clearInterval(statusCheckInterval);
-                  // Initialization completed but not active
-                  cameraError = "Camera initialization completed but camera is not active";
-                  updateCameraUI();
-                  alert(cameraError);
-                }
-              })
-              .catch(error => {
-                clearInterval(statusCheckInterval);
-                console.error('Camera status check error:', error);
-                cameraError = "Failed to check camera status";
-                updateCameraUI();
-                alert(cameraError);
-              });
-          }, 1000);
-        } else {
-          cameraError = data.error || 'Failed to start camera';
-          updateCameraUI();
-          alert(cameraError);
-        }
-        
-        // Reset button state
-        startCameraBtn.disabled = false;
-        startCameraBtn.innerHTML = '<i class="fas fa-video"></i> Start Camera';
-      })
-      .catch(error => {
-        console.error('Camera start error:', error);
-        cameraError = 'An error occurred while starting the camera';
-        updateCameraUI();
-        alert(cameraError);
-        
-        // Reset button state
-        startCameraBtn.disabled = false;
-        startCameraBtn.innerHTML = '<i class="fas fa-video"></i> Start Camera';
-      });
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      video.srcObject = stream;
+      
+      // Update UI
+      cameraActive = true;
+      cameraRequested = true;
+      cameraError = null;
+      cameraInitializing = false;
+      
+      if (statusText) statusText.innerText = 'Camera started ✅';
+      if (loadingDiv) loadingDiv.style.display = 'none';
+      
+      startCameraBtn.style.display = 'none';
+      stopCameraBtn.style.display = 'inline-block';
+      
+      // Update dashboard status
+      const dashCameraStatus = document.getElementById('dashboard-camera-status');
+      if (dashCameraStatus) {
+        dashCameraStatus.textContent = 'ACTIVE';
+        dashCameraStatus.style.color = '#34d399';
+      }
+      
+      const dashGestureStatus = document.getElementById('dashboard-gesture-status');
+      if (dashGestureStatus) {
+        dashGestureStatus.textContent = 'Active';
+        dashGestureStatus.style.color = '#34d399';
+      }
+      
+      // Start sending frames to backend
+      startFrameProcessing();
+      
+      console.log('[Camera] Browser camera started successfully');
+      
+    } catch (err) {
+      console.error('[Camera] Permission denied:', err);
+      cameraError = 'Camera permission denied';
+      if (statusText) statusText.innerText = 'Camera permission denied ❌';
+      if (loadingDiv) {
+        loadingDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Camera permission denied';
+        loadingDiv.style.display = 'flex';
+      }
+      alert('Camera permission denied. Please allow camera access and try again.');
+    } finally {
+      startCameraBtn.disabled = false;
+      startCameraBtn.innerHTML = '<i class="fas fa-video"></i> Start Camera';
+    }
   });
 }
 
 if (stopCameraBtn) {
   stopCameraBtn.addEventListener('click', () => {
-    fetch('/stop_camera', { 
-      method: 'POST',
-      credentials: 'same-origin'  // Include cookies for session
-    })
-      .then(response => {
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response.json();
-      })
-      .then(data => {
-        if (data.success) {
-          cameraActive = false;
-          cameraRequested = false;
-          cameraError = null;
-          updateCameraUI();
-          stopWebcam();
-          stopGestureDetection();
-          stopGestureDrawing();
-        } else {
-          alert('Failed to stop camera');
-        }
-      })
-      .catch(error => {
-        console.error('Camera stop error:', error);
-        alert('An error occurred while stopping the camera');
-      });
+    const video = document.getElementById('video');
+    const statusText = document.getElementById('camera-status-text');
+    const loadingDiv = document.getElementById('webcam-loading');
+    
+    // Stop video stream
+    if (video.srcObject) {
+      video.srcObject.getTracks().forEach(track => track.stop());
+      video.srcObject = null;
+    }
+    
+    // Stop frame processing
+    if (window.frameProcessingInterval) {
+      clearInterval(window.frameProcessingInterval);
+      window.frameProcessingInterval = null;
+    }
+    
+    cameraActive = false;
+    cameraRequested = false;
+    cameraError = null;
+    
+    if (statusText) statusText.innerText = 'Camera stopped';
+    if (loadingDiv) {
+      loadingDiv.innerHTML = '<i class="fas fa-video-slash"></i> Camera is off';
+      loadingDiv.style.display = 'flex';
+    }
+    
+    stopCameraBtn.style.display = 'none';
+    startCameraBtn.style.display = 'inline-block';
+    
+    // Update dashboard status
+    const dashCameraStatus = document.getElementById('dashboard-camera-status');
+    if (dashCameraStatus) {
+      dashCameraStatus.textContent = 'OFF';
+      dashCameraStatus.style.color = '#ef4444';
+    }
+    
+    const dashGestureStatus = document.getElementById('dashboard-gesture-status');
+    if (dashGestureStatus) {
+      dashGestureStatus.textContent = 'Inactive';
+      dashGestureStatus.style.color = '#94a3b8';
+    }
+    
+    console.log('[Camera] Browser camera stopped');
   });
 }
 
-if (restartCameraBtn) {
-  restartCameraBtn.addEventListener('click', () => {
-    fetch('/restart_camera', { 
-      method: 'POST',
-      credentials: 'same-origin'  // Include cookies for session
-    })
-      .then(response => {
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response.json();
-      })
-      .then(data => {
-        if (data.success) {
-          console.log(data.message || 'Camera restart started');
-          // Camera restart started, wait for status update
-        } else {
-          cameraError = data.error || 'Failed to restart camera';
-          updateCameraUI();
-          alert(cameraError);
-        }
-      })
-      .catch(error => {
-        console.error('Camera restart error:', error);
-        cameraError = 'An error occurred while restarting the camera';
-        updateCameraUI();
-        alert(cameraError);
+// Frame processing function
+let lastGesture = 'none';
+
+function startFrameProcessing() {
+  const video = document.getElementById('video');
+  const canvas = document.getElementById('canvas');
+  
+  if (!video || !canvas) {
+    console.error('[Frame Processing] Video or canvas element not found');
+    return;
+  }
+  
+  // Clear any existing interval
+  if (window.frameProcessingInterval) {
+    clearInterval(window.frameProcessingInterval);
+  }
+  
+  window.frameProcessingInterval = setInterval(async () => {
+    if (!video.videoWidth || !cameraActive) return;
+    
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0);
+    
+    const image = canvas.toDataURL('image/jpeg', 0.7);
+    
+    try {
+      const res = await fetch('/process-frame', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': userIdToken ? `Bearer ${userIdToken}` : ''
+        },
+        body: JSON.stringify({ image })
       });
-  });
+      
+      if (!res.ok) {
+        console.error('[Frame Processing] Server error:', res.status);
+        return;
+      }
+      
+      const data = await res.json();
+      
+      // Update gesture display
+      if (data.gesture !== lastGesture) {
+        lastGesture = data.gesture;
+        console.log('[Gesture]', data.gesture);
+        
+        // Update dashboard
+        const dashLastGesture = document.getElementById('dashboard-last-gesture');
+        if (dashLastGesture) {
+          dashLastGesture.textContent = data.gesture || 'None';
+        }
+        
+        const dashDetectionStatus = document.getElementById('dashboard-detection-status');
+        if (dashDetectionStatus) {
+          if (data.gesture && data.gesture !== 'none' && data.gesture !== 'unknown') {
+            dashDetectionStatus.textContent = 'Detecting';
+            dashDetectionStatus.style.color = '#34d399';
+          } else {
+            dashDetectionStatus.textContent = 'Standby';
+            dashDetectionStatus.style.color = '#94a3b8';
+          }
+        }
+      }
+      
+    } catch (error) {
+      console.error('[Frame Processing] Error:', error);
+    }
+  }, 150); // ~6 FPS
 }
 
-// Whiteboard camera controls
+
+// Whiteboard camera controls (reuse browser camera)
 if (startMiniCameraBtn) {
   startMiniCameraBtn.addEventListener('click', () => {
     fetch('/start_camera', { 

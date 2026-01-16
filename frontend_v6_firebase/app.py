@@ -2,7 +2,7 @@
 from flask import Flask, Response, render_template_string, jsonify, send_from_directory, request, session, make_response
 import cv2
 # Import compatibility shim first to add mp.solutions to MediaPipe 0.10.x
-import mediapipe_compat
+from . import mediapipe_compat
 import mediapipe as mp
 import numpy as np
 import math
@@ -11,10 +11,10 @@ import os
 import threading
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_cors import CORS
-from games.snake_game import SnakeGame
-from games.fruit_ninja import FruitNinjaGame
-from games.dino_run import DinoRunGame
-from games.pong_game import PongGame
+from .games.snake_game import SnakeGame
+from .games.fruit_ninja import FruitNinjaGame
+from .games.dino_run import DinoRunGame
+from .games.pong_game import PongGame
 # --- PRESENTATION MODULE IMPORTS ---
 import uuid
 from werkzeug.utils import secure_filename

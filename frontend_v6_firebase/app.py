@@ -106,7 +106,7 @@ MIN_TRACKING_CONFIDENCE = float(os.environ.get('MIN_TRACKING_CONFIDENCE', 0.5))
 # NOTE: For local development, uncomment this class. For Render, use HTTP frame processing endpoints instead.
 """
 class CameraStream:
-    """Dedicated thread for reading camera frames - prevents buffering lag."""
+   # Dedicated thread for reading camera frames - prevents buffering lag
     def __init__(self):
         self.frame = None
         self.lock = threading.Lock()

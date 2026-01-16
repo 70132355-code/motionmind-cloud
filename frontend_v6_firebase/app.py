@@ -104,120 +104,118 @@ MIN_TRACKING_CONFIDENCE = float(os.environ.get('MIN_TRACKING_CONFIDENCE', 0.5))
 
 # --- CAMERA STREAM CLASS (DISABLED FOR RENDER - NO SERVER-SIDE WEBCAM) ---
 # NOTE: For local development, uncomment this class. For Render, use HTTP frame processing endpoints instead.
-"""
-class CameraStream:
-   # Dedicated thread for reading camera frames - prevents buffering lag
-    def __init__(self):
-        self.frame = None
-        self.lock = threading.Lock()
-        self.camera = None
-        self.active = False
-        self.requested = False
-        self.error = None
-        self.initializing = False
-        self.thread = None
-        
-    def start(self, max_retries=3):
-        """Initialize camera in background thread."""
-        if self.initializing or self.active:
-            return True
-            
-        self.initializing = True
-        self.requested = True
-        self.error = None
-        
-        def init_camera():
-            methods_to_try = [
-                # ("DirectShow, Index 0", lambda: cv2.VideoCapture(0, cv2.CAP_DSHOW)),  # Disabled for Render deployment
-                # ("Default, Index 0", lambda: cv2.VideoCapture(0)),  # Disabled for Render deployment
-                # ("MSMF, Index 0", lambda: cv2.VideoCapture(0, cv2.CAP_MSMF)),  # Disabled for Render deployment
-                # ("Default, Index 1", lambda: cv2.VideoCapture(1)),  # Disabled for Render deployment
-            ]
-            
-            for attempt in range(max_retries):
-                for name, cap_factory in methods_to_try:
-                    cap = None
-                    try:
-                        cap = cap_factory()
-                        if cap.isOpened():
-                            # Set camera properties for better performance
-                            cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-                            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-                            cap.set(cv2.CAP_PROP_FPS, 30)
-                            cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)  # Reduce buffer lag
-                            
-                            ret, test_frame = cap.read()
-                            if ret:
-                                print(f"✅ Camera initialized: {name}")
-                                with self.lock:
-                                    self.camera = cap
-                                    self.active = True
-                                    self.error = None
-                                    self.initializing = False
-                                # Start capture thread
-                                self.thread = threading.Thread(target=self._capture_loop, daemon=True)
-                                self.thread.start()
-                                return
-                            else:
-                                cap.release()
-                        else:
-                            cap.release()
-                    except Exception as e:
-                        print(f"Camera init error with {name}: {e}")
-                        if cap:
-                            try:
-                                cap.release()
-                            except:
-                                pass
-                time.sleep(1)
-            
-            print("❌ Camera initialization failed")
-            self.active = False
-            self.error = "Camera initialization failed"
-            self.initializing = False
-        
-        threading.Thread(target=init_camera, daemon=True).start()
-        return True
-    
-    def _capture_loop(self):
-        """Continuously read frames (drops old frames to prevent lag)."""
-        print("[CameraStream] Capture loop started")
-        while self.active:
-            if self.camera and self.camera.isOpened():
-                ret, frame = self.camera.read()
-                if ret:
-                    with self.lock:
-                        self.frame = frame
-                else:
-                    print("[CameraStream] Frame read failed")
-                    time.sleep(0.01)
-            else:
-                time.sleep(0.1)
-    
-    def read(self):
-        '''Get latest frame (non-blocking).'''
-        with self.lock:
-            if self.frame is not None:
-                return True, self.frame.copy()
-            return False, None
-    
-    def stop(self):
-        '''Release camera resources.'''
-        print("[CameraStream] Stopping...")
-        self.active = False
-        self.requested = False
-        if self.thread:
-            self.thread.join(timeout=2)
-        with self.lock:
-            if self.camera:
-                try:
-                    self.camera.release()
-                except Exception as e:
-                    print(f"Camera release error: {e}")
-            self.camera = None
-            self.frame = None
-        print("✅ CameraStream stopped")
-"""
+# class CameraStream:
+#     # Dedicated thread for reading camera frames - prevents buffering lag
+#     def __init__(self):
+#         self.frame = None
+#         self.lock = threading.Lock()
+#         self.camera = None
+#         self.active = False
+#         self.requested = False
+#         self.error = None
+#         self.initializing = False
+#         self.thread = None
+#         
+#     def start(self, max_retries=3):
+#         # Initialize camera in background thread
+#         if self.initializing or self.active:
+#             return True
+#             
+#         self.initializing = True
+#         self.requested = True
+#         self.error = None
+#         
+#         def init_camera():
+#             methods_to_try = [
+#                 # ("DirectShow, Index 0", lambda: cv2.VideoCapture(0, cv2.CAP_DSHOW)),  # Disabled for Render deployment
+#                 # ("Default, Index 0", lambda: cv2.VideoCapture(0)),  # Disabled for Render deployment
+#                 # ("MSMF, Index 0", lambda: cv2.VideoCapture(0, cv2.CAP_MSMF)),  # Disabled for Render deployment
+#                 # ("Default, Index 1", lambda: cv2.VideoCapture(1)),  # Disabled for Render deployment
+#             ]
+#             
+#             for attempt in range(max_retries):
+#                 for name, cap_factory in methods_to_try:
+#                     cap = None
+#                     try:
+#                         cap = cap_factory()
+#                         if cap.isOpened():
+#                             # Set camera properties for better performance
+#                             cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+#                             cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+#                             cap.set(cv2.CAP_PROP_FPS, 30)
+#                             cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)  # Reduce buffer lag
+#                             
+#                             ret, test_frame = cap.read()
+#                             if ret:
+#                                 print(f"✅ Camera initialized: {name}")
+#                                 with self.lock:
+#                                     self.camera = cap
+#                                     self.active = True
+#                                     self.error = None
+#                                     self.initializing = False
+#                                 # Start capture thread
+#                                 self.thread = threading.Thread(target=self._capture_loop, daemon=True)
+#                                 self.thread.start()
+#                                 return
+#                             else:
+#                                 cap.release()
+#                         else:
+#                             cap.release()
+#                     except Exception as e:
+#                         print(f"Camera init error with {name}: {e}")
+#                         if cap:
+#                             try:
+#                                 cap.release()
+#                             except:
+#                                 pass
+#                 time.sleep(1)
+#             
+#             print("❌ Camera initialization failed")
+#             self.active = False
+#             self.error = "Camera initialization failed"
+#             self.initializing = False
+#         
+#         threading.Thread(target=init_camera, daemon=True).start()
+#         return True
+#     
+#     def _capture_loop(self):
+#         # Continuously read frames (drops old frames to prevent lag)
+#         print("[CameraStream] Capture loop started")
+#         while self.active:
+#             if self.camera and self.camera.isOpened():
+#                 ret, frame = self.camera.read()
+#                 if ret:
+#                     with self.lock:
+#                         self.frame = frame
+#                 else:
+#                     print("[CameraStream] Frame read failed")
+#                     time.sleep(0.01)
+#             else:
+#                 time.sleep(0.1)
+#     
+#     def read(self):
+#         # Get latest frame (non-blocking)
+#         with self.lock:
+#             if self.frame is not None:
+#                 return True, self.frame.copy()
+#             return False, None
+#     
+#     def stop(self):
+#         # Release camera resources
+#         print("[CameraStream] Stopping...")
+#         self.active = False
+#         self.requested = False
+#         if self.thread:
+#             self.thread.join(timeout=2)
+#         with self.lock:
+#             if self.camera:
+#                 try:
+#                     self.camera.release()
+#                 except Exception as e:
+#                     print(f"Camera release error: {e}")
+#             self.camera = None
+#             self.frame = None
+#         print("✅ CameraStream stopped")
 
 # Stub class for Render deployment (no server-side camera)
 class CameraStream:

@@ -110,7 +110,9 @@ def _hands_is_compat_impl() -> bool:
 MIN_DETECTION_CONFIDENCE = float(os.environ.get('MIN_DETECTION_CONFIDENCE', 0.5))
 MIN_TRACKING_CONFIDENCE = float(os.environ.get('MIN_TRACKING_CONFIDENCE', 0.5))
 
-# --- CAMERA STREAM CLASS (Single threaded camera reader) ---
+# --- CAMERA STREAM CLASS (DISABLED FOR RENDER - NO SERVER-SIDE WEBCAM) ---
+# NOTE: For local development, uncomment this class. For Render, use HTTP frame processing endpoints instead.
+"""
 class CameraStream:
     """Dedicated thread for reading camera frames - prevents buffering lag."""
     def __init__(self):
@@ -134,10 +136,10 @@ class CameraStream:
         
         def init_camera():
             methods_to_try = [
-                ("DirectShow, Index 0", lambda: cv2.VideoCapture(0, cv2.CAP_DSHOW)),
-                ("Default, Index 0", lambda: cv2.VideoCapture(0)),
-                ("MSMF, Index 0", lambda: cv2.VideoCapture(0, cv2.CAP_MSMF)),
-                ("Default, Index 1", lambda: cv2.VideoCapture(1)),
+                # ("DirectShow, Index 0", lambda: cv2.VideoCapture(0, cv2.CAP_DSHOW)),  # Disabled for Render deployment
+                # ("Default, Index 0", lambda: cv2.VideoCapture(0)),  # Disabled for Render deployment
+                # ("MSMF, Index 0", lambda: cv2.VideoCapture(0, cv2.CAP_MSMF)),  # Disabled for Render deployment
+                # ("Default, Index 1", lambda: cv2.VideoCapture(1)),  # Disabled for Render deployment
             ]
             
             for attempt in range(max_retries):
@@ -201,14 +203,14 @@ class CameraStream:
                 time.sleep(0.1)
     
     def read(self):
-        """Get latest frame (non-blocking)."""
+        '''Get latest frame (non-blocking).'''
         with self.lock:
             if self.frame is not None:
                 return True, self.frame.copy()
             return False, None
     
     def stop(self):
-        """Release camera resources."""
+        '''Release camera resources.'''
         print("[CameraStream] Stopping...")
         self.active = False
         self.requested = False
@@ -223,6 +225,23 @@ class CameraStream:
             self.camera = None
             self.frame = None
         print("✅ CameraStream stopped")
+"""
+
+# Stub class for Render deployment (no server-side camera)
+class CameraStream:
+    """Stub for deployment - camera frames come via HTTP, not server-side capture."""
+    def __init__(self):
+        self.active = False
+        self.error = "Server-side camera disabled for cloud deployment"
+    
+    def start(self, max_retries=3):
+        return False
+    
+    def read(self):
+        return False, None
+    
+    def stop(self):
+        pass
 
 # --- MEDIAPIPE WORKER THREAD (Runs at target FPS) ---
 class MediaPipeWorker:
@@ -1364,6 +1383,12 @@ def presentation_action():
     # Clamp slide
     presentation_state["current_slide"] = max(1, min(presentation_state["current_slide"], presentation_state["total_slides"]))
     return jsonify(success=True, state=presentation_state)
+
+@app.route('/health')
+def health():
+    """Simple health check endpoint for Render"""
+    return jsonify(status="ok"), 200
+
 @app.route('/')
 def index():
     try:
@@ -1754,14 +1779,5 @@ def cleanup(error):
 # Don't initialize camera on startup
 # initialize_camera()  # REMOVED
 
-if __name__ == '__main__':
-    # Log mediapipe package location for verification
-    try:
-        import mediapipe
-        print(f"[MediaPipe] mediapipe.__file__ = {mediapipe.__file__}")
-    except Exception as e:
-        print(f"[MediaPipe] Could not log mediapipe.__file__: {e}")
-    try:
-        app.run(debug=True, use_reloader=False, host='0.0.0.0', port=5000)
-    finally:
-        release_camera()
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=10000)

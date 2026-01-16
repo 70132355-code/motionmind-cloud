@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Presentation Viewer</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="presentation-upload">
+    <form id="presentationUploadForm" enctype="multipart/form-data">
+      <input type="file" id="presentationFile" name="presentation" accept=".ppt,.pptx" required />
+      <button type="submit">Upload Presentation</button>
+    </form>
+  </div>
+  <div class="presentation-viewer hidden" id="presentationViewer">
+    <img id="slideImage" src="" alt="Presentation Slide" />
+    <div class="presentation-controls">
+      <span id="slideCounter"></span>
+      <button id="closePresentationBtn">Close</button>
+    </div>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>

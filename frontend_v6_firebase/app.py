@@ -30,28 +30,20 @@ app = Flask(__name__, static_folder='.', static_url_path='')
 app.secret_key = 'motion-mind-secret-key-change-in-production'  # Change this in production!
 CORS(app)  # Enable CORS for all routes
 
-# Initialize Firebase Admin SDK - REQUIRED
-try:
-    # Use absolute path to ensure the file is found regardless of working directory
-    firebase_json_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'firebase-service-account.json')
-    cred = credentials.Certificate(firebase_json_path)
-    firebase_admin.initialize_app(cred)
-    print("✅ Firebase Admin initialized successfully")
-except Exception as e:
-    print("\n" + "="*80)
-    print("❌ ERROR: Firebase Admin initialization FAILED")
-    print("="*80)
-    print(f"Reason: {e}\n")
-    print("📋 TO FIX THIS:")
-    print("1. Go to: https://console.firebase.google.com/project/motionmind-1d875/settings/serviceaccounts/adminsdk")
-    print("2. Click 'Generate new private key'")
-    print("3. Download the JSON file")
-    print("4. Save it as: firebase-service-account.json (in this folder)")
-    print("5. Restart the server\n")
-    print("="*80)
-    print("⚠️  APP CANNOT START WITHOUT FIREBASE AUTHENTICATION")
-    print("="*80 + "\n")
-    raise SystemExit(1)
+# Initialize Firebase Admin SDK (ONLY if credentials exist)
+if os.path.exists(os.path.join(os.path.dirname(__file__), "firebase-service-account.json")):
+    try:
+        firebase_json_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            'firebase-service-account.json'
+        )
+        cred = credentials.Certificate(firebase_json_path)
+        firebase_admin.initialize_app(cred)
+        print("✅ Firebase Admin initialized successfully")
+    except Exception as e:
+        print("⚠️ Firebase Admin init skipped:", e)
+else:
+    print("ℹ️ Firebase Admin not initialized (no service account on Render)")
 
 # Authentication decorator
 def firebase_auth_required(f):

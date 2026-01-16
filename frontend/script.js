@@ -2612,7 +2612,7 @@ function redrawCanvas() {
   });
 }
 
-document.getElementById('clearBtn').addEventListener('click', () => {
+document.getElementById('clearBtn')?.addEventListener('click', () => {
   const canvas = document.getElementById('whiteboard-canvas');
   if (!canvas) return;
   
@@ -2621,7 +2621,7 @@ document.getElementById('clearBtn').addEventListener('click', () => {
   strokes = [];
 });
 
-document.getElementById('colorPicker').addEventListener('change', e => {
+document.getElementById('colorPicker')?.addEventListener('change', e => {
   const canvas = document.getElementById('whiteboard-canvas');
   if (!canvas) return;
   
@@ -2949,34 +2949,14 @@ function startPresentationControl() {
   // No initialization needed for demo slides anymore
 }
 
-document.getElementById('themeSelect').addEventListener('change', e => {
+document.getElementById('themeSelect')?.addEventListener('change', e => {
   currentTheme = e.target.value;
   applyTheme(currentTheme);
 });
 
 // === INIT ===
-// Check if user is already logged in
-fetch('/check_auth', {
-  credentials: 'same-origin'  // Include cookies for session
-})
-  .then(response => {
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    return response.json();
-  })
-  .then(data => {
-    if (data.authenticated) {
-      currentUser = data.email;
-      showScreen('dashboard');
-    } else {
-      showScreen('login');
-    }
-  })
-  .catch(error => {
-    console.error('Auth check error:', error);
-    showScreen('login');
-  });
+// Firebase auth state is checked in initFirebase()
+// No need for legacy session-based auth check
 
 // === FAQ ACCORDION FUNCTIONALITY ===
 function initFAQAccordion() {

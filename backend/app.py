@@ -590,7 +590,7 @@ camera_error = None
 camera_initializing = False
 
 # --- SNAKE GAME STATE ---
-snake_game = SnakeGame(food_image_path="static/assets/Donut.png")
+snake_game = SnakeGame()  # No food image (uses default circle)
 snake_lock = threading.Lock()
 
 # --- FRUIT NINJA GAME STATE ---

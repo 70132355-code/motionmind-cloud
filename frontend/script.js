@@ -1,6 +1,10 @@
 // 🔥 IMPORT BACKEND URL (SINGLE SOURCE OF TRUTH)
 import { BACKEND_URL } from './config.js';
 
+// 🔥 SINGLE GLOBAL CAMERA CONTROLLER
+let globalStream = null;
+let cameraRunning = false;
+
 // === FIREBASE AUTHENTICATION ===
 let currentUser = null;
 let userIdToken = null;
@@ -262,6 +266,7 @@ function initDinoGame() {
   }, 500, 'games');
 }
 
+// 🔥 FIX 4 — NULL CHECK FOR EVENT LISTENER
 if (dinoResetBtn) {
   dinoResetBtn.addEventListener('click', () => {
     fetch(`${BACKEND_URL}/dino_reset`, {
@@ -352,6 +357,7 @@ function initPongGame() {
   }, 500, 'games');
 }
 
+// 🔥 FIX 4 — NULL CHECK FOR EVENT LISTENER
 if (pongResetBtn) {
   pongResetBtn.addEventListener('click', () => {
     fetch(`${BACKEND_URL}/pong_reset`, {
@@ -1149,6 +1155,40 @@ function updateCameraUI() {
   });
 }
 
+// 🔥 FIX 5 — GLOBAL CAMERA START FUNCTION (REUSABLE)
+async function startGlobalCamera(videoElement) {
+  if (cameraRunning && globalStream) {
+    console.log('[Camera] Already running, reusing stream');
+    if (videoElement) videoElement.srcObject = globalStream;
+    return globalStream;
+  }
+
+  try {
+    console.log('[Camera] Starting new camera stream');
+    globalStream = await navigator.mediaDevices.getUserMedia({ 
+      video: { width: 640, height: 480 } 
+    });
+    if (videoElement) videoElement.srcObject = globalStream;
+    cameraRunning = true;
+    console.log('[Camera] ✅ Global camera started');
+    return globalStream;
+  } catch (error) {
+    console.error('[Camera] ❌ Failed to start:', error);
+    cameraRunning = false;
+    globalStream = null;
+    throw error;
+  }
+}
+
+function stopGlobalCamera() {
+  if (globalStream) {
+    globalStream.getTracks().forEach(track => track.stop());
+    globalStream = null;
+  }
+  cameraRunning = false;
+  console.log('[Camera] ✅ Global camera stopped');
+}
+
 // Dashboard camera controls
 if (startCameraBtn) {
   startCameraBtn.addEventListener('click', async () => {
@@ -1164,8 +1204,8 @@ if (startCameraBtn) {
     if (loadingDiv) loadingDiv.style.display = 'flex';
     
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      video.srcObject = stream;
+      // 🔥 USE GLOBAL CAMERA FUNCTION
+      await startGlobalCamera(video);
       
       // Update UI
       cameraActive = true;
@@ -1219,11 +1259,9 @@ if (stopCameraBtn) {
     const statusText = document.getElementById('camera-status-text');
     const loadingDiv = document.getElementById('webcam-loading');
     
-    // Stop video stream
-    if (video.srcObject) {
-      video.srcObject.getTracks().forEach(track => track.stop());
-      video.srcObject = null;
-    }
+    // 🔥 USE GLOBAL CAMERA STOP FUNCTION
+    stopGlobalCamera();
+    if (video) video.srcObject = null;
     
     // Stop frame processing
     if (window.frameProcessingInterval) {

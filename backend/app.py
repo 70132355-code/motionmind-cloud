@@ -1772,16 +1772,13 @@ def pong_state():
         return jsonify(score=0, gameOver=False), 500
 
 # --- DEPRECATED CAMERA CONTROL ROUTES (LEGACY - USE BROWSER CAMERA INSTEAD) ---
-@app.route('/camera_status')
+@app.route('/camera_status', methods=['GET'])
 def camera_status():
-    """Deprecated: Camera is now browser-controlled, not server-side"""
-    return jsonify(
-        active=False, 
-        requested=False, 
-        error="Camera is browser-controlled. Use /process-frame endpoint.",
-        initializing=False,
-        deprecated=True
-    )
+    """Simple status endpoint - browser controls camera via getUserMedia()"""
+    return jsonify({
+        "camera": "browser",
+        "status": "active"
+    })
 
 @app.route('/start_camera', methods=['POST'])
 def start_camera():

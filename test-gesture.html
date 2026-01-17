@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gesture Detection Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a1a2e;
+            color: #fff;
+        }
+        video {
+            width: 100%;
+            max-width: 640px;
+            border: 3px solid #00ff88;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .status {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            background: #16213e;
+            border-left: 4px solid #00ff88;
+        }
+        .gesture {
+            font-size: 48px;
+            font-weight: bold;
+            color: #00ff88;
+            text-align: center;
+            margin: 20px 0;
+        }
+        button {
+            background: #00ff88;
+            color: #1a1a2e;
+            border: none;
+            padding: 12px 30px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background: #00dd77;
+        }
+        .log {
+            background: #0f0f1e;
+            padding: 10px;
+            border-radius: 5px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🖐️ Gesture Detection Test</h1>
+    <div class="status" id="status">Click "Start Camera" to begin...</div>
+    <div class="gesture" id="gesture">No Gesture</div>
+    
+    <button onclick="startCamera()">Start Camera</button>
+    <button onclick="stopCamera()">Stop Camera</button>
+    
+    <video id="video" autoplay playsinline></video>
+    
+    <div class="log" id="log"></div>
+
+    <script>
+        const BACKEND_URL = 'http://localhost:10000';
+        let video = document.getElementById('video');
+        let stream = null;
+        let processingInterval = null;
+
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.innerHTML = `[${timestamp}] ${message}<br>` + logDiv.innerHTML;
+        }
+
+        async function startCamera() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { width: 640, height: 480 } 
+                });
+                video.srcObject = stream;
+                document.getElementById('status').textContent = '✅ Camera started - Processing frames...';
+                log('Camera started successfully');
+                
+                // Start processing frames every 100ms
+                processingInterval = setInterval(processFrame, 100);
+            } catch (error) {
+                document.getElementById('status').textContent = '❌ Camera access denied: ' + error.message;
+                log('ERROR: ' + error.message);
+            }
+        }
+
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+            if (processingInterval) {
+                clearInterval(processingInterval);
+                processingInterval = null;
+            }
+            document.getElementById('status').textContent = 'Camera stopped';
+            document.getElementById('gesture').textContent = 'No Gesture';
+            log('Camera stopped');
+        }
+
+        async function processFrame() {
+            if (!stream) return;
+
+            try {
+                // Create canvas and capture frame
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0);
+                
+                // Get base64 frame
+                const frame = canvas.toDataURL('image/jpeg', 0.7);
+                
+                // Send to backend
+                const response = await fetch(`${BACKEND_URL}/process-frame`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ frame })
+                });
+
+                if (!response.ok) {
+                    log(`ERROR: Server returned ${response.status}`);
+                    return;
+                }
+
+                const data = await response.json();
+                
+                // Update UI
+                document.getElementById('gesture').textContent = data.gesture || 'none';
+                document.getElementById('status').textContent = 
+                    `✅ Backend responding | Hand: ${data.hand_detected ? 'YES' : 'NO'} | Gesture: ${data.gesture}`;
+                
+                if (data.hand_detected) {
+                    log(`✅ Gesture detected: ${data.gesture}`);
+                }
+                
+            } catch (error) {
+                log('ERROR: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>

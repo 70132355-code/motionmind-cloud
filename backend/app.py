@@ -2,7 +2,10 @@
 from flask import Flask, Response, render_template_string, jsonify, send_from_directory, request, session, make_response
 import cv2
 # Import compatibility shim first to add mp.solutions to MediaPipe 0.10.x
-from . import mediapipe_compat
+try:
+    from . import mediapipe_compat
+except ImportError:
+    import mediapipe_compat
 import mediapipe as mp
 import numpy as np
 import math
@@ -11,10 +14,16 @@ import os
 import threading
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_cors import CORS
-from .games.snake_game import SnakeGame
-from .games.fruit_ninja import FruitNinjaGame
-from .games.dino_run import DinoRunGame
-from .games.pong_game import PongGame
+try:
+    from .games.snake_game import SnakeGame
+    from .games.fruit_ninja import FruitNinjaGame
+    from .games.dino_run import DinoRunGame
+    from .games.pong_game import PongGame
+except ImportError:
+    from games.snake_game import SnakeGame
+    from games.fruit_ninja import FruitNinjaGame
+    from games.dino_run import DinoRunGame
+    from games.pong_game import PongGame
 # --- PRESENTATION MODULE IMPORTS ---
 import uuid
 from werkzeug.utils import secure_filename
@@ -101,6 +110,15 @@ def _hands_is_compat_impl() -> bool:
 # Balanced values for stable gesture detection (0.5 = good balance of speed and accuracy)
 MIN_DETECTION_CONFIDENCE = float(os.environ.get('MIN_DETECTION_CONFIDENCE', 0.5))
 MIN_TRACKING_CONFIDENCE = float(os.environ.get('MIN_TRACKING_CONFIDENCE', 0.5))
+
+# ✅ GLOBAL MEDIAPIPE HANDS INSTANCE (initialized once, reused for all frames)
+hands = mp_hands.Hands(
+    static_image_mode=False,  # Video mode for better tracking
+    max_num_hands=1,
+    min_detection_confidence=0.7,
+    min_tracking_confidence=0.7
+)
+print("✅ MediaPipe Hands initialized globally")
 
 # --- CAMERA STREAM CLASS (DISABLED FOR RENDER - NO SERVER-SIDE WEBCAM) ---
 # NOTE: For local development, uncomment this class. For Render, use HTTP frame processing endpoints instead.
@@ -1382,60 +1400,45 @@ def health():
 @app.route('/process-frame', methods=['POST'])
 def process_frame():
     """Process a single frame from the browser camera and return gesture detection results"""
+    import base64
+    
     try:
-        import base64
-        
         data = request.json
-        if not data or 'image' not in data:
-            return jsonify(error="No image data provided"), 400
+        if not data or 'frame' not in data:
+            return jsonify(error="No frame received"), 400
         
-        # Decode base64 image
-        image_data = data['image'].split(',')[1] if ',' in data['image'] else data['image']
-        img_bytes = base64.b64decode(image_data)
-        np_img = np.frombuffer(img_bytes, np.uint8)
-        frame = cv2.imdecode(np_img, cv2.IMREAD_COLOR)
+        # ✅ STEP 2 — CORRECT FRAME DECODING
+        frame_data = data['frame'].split(',')[1]
+        image_bytes = base64.b64decode(frame_data)
+        np_arr = np.frombuffer(image_bytes, np.uint8)
+        frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
         
         if frame is None:
             return jsonify(error="Failed to decode image"), 400
         
-        # Process with MediaPipe
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        # ✅ STEP 6 — DEBUG LOGGING
+        print(f"📸 Frame received: {frame.shape}")
         
-        # Create a temporary Hands instance for processing
-        hands_instance = mp_hands.Hands(
-            static_image_mode=True,
-            min_detection_confidence=MIN_DETECTION_CONFIDENCE,
-            min_tracking_confidence=MIN_TRACKING_CONFIDENCE,
-            max_num_hands=1
-        )
+        # ✅ STEP 4 — RUN MEDIAPIPE ON FRAME
+        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        result = hands.process(rgb)
         
-        results = hands_instance.process(rgb_frame)
-        hands_instance.close()
-        
-        # Detect gesture
         gesture = "none"
-        hand_position_data = {"x": 0, "y": 0, "visible": False}
+        hand_detected = False
         
-        if results and results.multi_hand_landmarks:
-            hand_landmarks = results.multi_hand_landmarks[0]
+        if result.multi_hand_landmarks:
+            hand_detected = True
+            hand_landmarks = result.multi_hand_landmarks[0]
             gesture = detect_gesture(hand_landmarks)
-            
-            # Get hand position
-            index_tip = hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP]
-            hand_position_data = {
-                "x": index_tip.x,
-                "y": index_tip.y,
-                "z": index_tip.z,
-                "visible": True
-            }
+            print(f"👋 Gesture detected: {gesture}")
         
         return jsonify({
             "gesture": gesture,
-            "hand_position": hand_position_data
+            "hand_detected": hand_detected
         })
         
     except Exception as e:
-        print(f"[Process Frame] Error: {e}")
+        print(f"❌ [Process Frame] Error: {e}")
         import traceback
         traceback.print_exc()
         return jsonify(error=str(e)), 500
@@ -1817,4 +1820,4 @@ def cleanup(error):
 # initialize_camera()  # REMOVED
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+    app.run(host="0.0.0.0", port=10000, debug=True)

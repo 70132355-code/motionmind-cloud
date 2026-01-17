@@ -1,3 +1,6 @@
+// 🔥 IMPORT BACKEND URL (SINGLE SOURCE OF TRUTH)
+import { BACKEND_URL } from './config.js';
+
 // === FIREBASE AUTHENTICATION ===
 let currentUser = null;
 let userIdToken = null;
@@ -241,7 +244,11 @@ function initDinoGame() {
 
   // Start polling dino state (score)
   screenStates.games.dinoInterval = setAppInterval(() => {
-    fetch('/dino_state', { credentials: 'same-origin' })
+    fetch(`${BACKEND_URL}/dino_state`, {
+      headers: {
+        'Authorization': `Bearer ${userIdToken}`
+      }
+    })
       .then(response => {
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         return response.json();
@@ -257,9 +264,11 @@ function initDinoGame() {
 
 if (dinoResetBtn) {
   dinoResetBtn.addEventListener('click', () => {
-    fetch('/dino_reset', {
+    fetch(`${BACKEND_URL}/dino_reset`, {
       method: 'POST',
-      credentials: 'same-origin'
+      headers: {
+        'Authorization': `Bearer ${userIdToken}`
+      }
     })
       .then(response => {
         if (!response.ok) {
@@ -322,7 +331,11 @@ function initPongGame() {
 
   // Start polling pong state (score)
   screenStates.games.pongInterval = setAppInterval(() => {
-    fetch('/pong_state', { credentials: 'same-origin' })
+    fetch(`${BACKEND_URL}/pong_state`, {
+      headers: {
+        'Authorization': `Bearer ${userIdToken}`
+      }
+    })
       .then(response => {
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         return response.json();
@@ -341,9 +354,11 @@ function initPongGame() {
 
 if (pongResetBtn) {
   pongResetBtn.addEventListener('click', () => {
-    fetch('/pong_reset', {
+    fetch(`${BACKEND_URL}/pong_reset`, {
       method: 'POST',
-      credentials: 'same-origin'
+      headers: {
+        'Authorization': `Bearer ${userIdToken}`
+      }
     })
       .then(response => {
         if (!response.ok) {
@@ -947,8 +962,11 @@ function checkCameraStatus() {
     return;
   }
   
-  fetch('/camera_status', {
-    credentials: 'same-origin'  // Include cookies for session
+  // 🔥 FIX 2 — USE BACKEND_URL (NOT RELATIVE PATH)
+  fetch(`${BACKEND_URL}/camera_status`, {
+    headers: {
+      'Authorization': `Bearer ${userIdToken}`
+    }
   })
     .then(response => {
       if (!response.ok) {
@@ -1269,7 +1287,8 @@ function startFrameProcessing() {
     const ctx = canvas.getContext('2d');
     ctx.drawImage(video, 0, 0);
     
-    const image = canvas.toDataURL('image/jpeg', 0.7);
+    // ✅ STEP 5 — FRONTEND MUST SEND BASE64 FRAME
+    const frame = canvas.toDataURL('image/jpeg', 0.7);
     
     // Use backend URL from config (fallback to relative path for local dev)
     const backendUrl = typeof BACKEND_URL !== 'undefined' ? BACKEND_URL : '';
@@ -1281,7 +1300,7 @@ function startFrameProcessing() {
           'Content-Type': 'application/json',
           'Authorization': userIdToken ? `Bearer ${userIdToken}` : ''
         },
-        body: JSON.stringify({ image })
+        body: JSON.stringify({ frame })
       });
       
       if (!res.ok) {
@@ -1324,9 +1343,11 @@ function startFrameProcessing() {
 // Whiteboard camera controls (reuse browser camera)
 if (startMiniCameraBtn) {
   startMiniCameraBtn.addEventListener('click', () => {
-    fetch('/start_camera', { 
+    fetch(`${BACKEND_URL}/start_camera`, { 
       method: 'POST',
-      credentials: 'same-origin'  // Include cookies for session
+      headers: {
+        'Authorization': `Bearer ${userIdToken}`
+      }
     })
       .then(response => {
         if (!response.ok) {
@@ -1363,9 +1384,11 @@ if (startMiniCameraBtn) {
 
 if (stopMiniCameraBtn) {
   stopMiniCameraBtn.addEventListener('click', () => {
-    fetch('/stop_camera', { 
+    fetch(`${BACKEND_URL}/stop_camera`, { 
       method: 'POST',
-      credentials: 'same-origin'  // Include cookies for session
+      headers: {
+        'Authorization': `Bearer ${userIdToken}`
+      }
     })
       .then(response => {
         if (!response.ok) {
@@ -1400,9 +1423,11 @@ if (startGamesCameraBtn) {
     startGamesCameraBtn.disabled = true;
     startGamesCameraBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Starting...';
     
-    fetch('/start_camera', { 
+    fetch(`${BACKEND_URL}/start_camera`, { 
       method: 'POST',
-      credentials: 'same-origin'
+      headers: {
+        'Authorization': `Bearer ${userIdToken}`
+      }
     })
       .then(response => {
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -1462,9 +1487,11 @@ if (startGamesCameraBtn) {
 
 if (stopGamesCameraBtn) {
   stopGamesCameraBtn.addEventListener('click', () => {
-    fetch('/stop_camera', { 
+    fetch(`${BACKEND_URL}/stop_camera`, { 
       method: 'POST',
-      credentials: 'same-origin'
+      headers: {
+        'Authorization': `Bearer ${userIdToken}`
+      }
     })
       .then(response => {
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -1523,9 +1550,11 @@ if (stopGamesCameraBtn) {
 // Presentation camera controls
 if (startPresentationCameraBtn) {
   startPresentationCameraBtn.addEventListener('click', () => {
-    fetch('/start_camera', { 
+    fetch(`${BACKEND_URL}/start_camera`, { 
       method: 'POST',
-      credentials: 'same-origin'  // Include cookies for session
+      headers: {
+        'Authorization': `Bearer ${userIdToken}`
+      }
     })
       .then(response => {
         if (!response.ok) {
@@ -1562,9 +1591,11 @@ if (startPresentationCameraBtn) {
 
 if (stopPresentationCameraBtn) {
   stopPresentationCameraBtn.addEventListener('click', () => {
-    fetch('/stop_camera', { 
+    fetch(`${BACKEND_URL}/stop_camera`, { 
       method: 'POST',
-      credentials: 'same-origin'  // Include cookies for session
+      headers: {
+        'Authorization': `Bearer ${userIdToken}`
+      }
     })
       .then(response => {
         if (!response.ok) {
@@ -1674,8 +1705,10 @@ function startGestureDetection(screenId) {
     if (now - lastGestureUpdate < GESTURE_UPDATE_INTERVAL) return;
     
     lastGestureUpdate = now;
-    fetch('/get_gesture', {
-      credentials: 'same-origin'  // Include cookies for session
+    fetch(`${BACKEND_URL}/get_gesture`, {
+      headers: {
+        'Authorization': `Bearer ${userIdToken}`
+      }
     })
       .then(response => {
         if (!response.ok) {
@@ -1855,8 +1888,10 @@ function initSnakeGame() {
 
     // Start polling snake state (score, gameOver)
     screenStates.games.snakeInterval = setAppInterval(() => {
-      fetch('/snake_state', {
-        credentials: 'same-origin'
+      fetch(`${BACKEND_URL}/snake_state`, {
+        headers: {
+          'Authorization': `Bearer ${userIdToken}`
+        }
       })
         .then(response => {
           if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -1926,7 +1961,11 @@ function initFruitGame() {
 
   // Start polling fruit state
   screenStates.games.fruitInterval = setAppInterval(() => {
-    fetch('/fruit_state', { credentials: 'same-origin' })
+    fetch(`${BACKEND_URL}/fruit_state`, {
+      headers: {
+        'Authorization': `Bearer ${userIdToken}`
+      }
+    })
       .then(response => {
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         return response.json();
@@ -2179,8 +2218,10 @@ function initBasketball() {
   }
   
   screenStates.games.drawingInterval = setAppInterval(() => {
-    fetch('/get_hand_position', {
-      credentials: 'same-origin'
+    fetch(`${BACKEND_URL}/get_hand_position`, {
+      headers: {
+        'Authorization': `Bearer ${userIdToken}`
+      }
     })
       .then(response => {
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);

@@ -1243,9 +1243,23 @@ def generate_pong_frames():
         
         time.sleep(0.033)  # 30 FPS
 
-# --- FLASK ROUTES ---
+# ============================================================================
+# FLASK ROUTES - AUTHENTICATION ARCHITECTURE
+# ============================================================================
+# 🔓 PUBLIC ROUTES (No auth required - low latency, no sensitive data):
+#    - /health
+#    - /process-frame (gesture detection)
+#    - /camera_status
+#    - /video_feed, /snake_feed, /fruit_feed, /dino_feed, /pong_feed (MJPEG streams)
+#
+# 🔒 PROTECTED ROUTES (Firebase auth required - user data, sensitive operations):
+#    - /upload_presentation
+#    - /get_gesture, /get_hand_position, /get_whiteboard_state
+#    - All game state/reset routes
+#    - All presentation actions
+# ============================================================================
 
-# --- PRESENTATION UPLOAD & STATE ---
+# --- PRESENTATION UPLOAD & STATE (PROTECTED) ---
 @app.route('/upload_presentation', methods=['POST'])
 @firebase_auth_required
 def upload_presentation():
@@ -1392,6 +1406,11 @@ def presentation_action():
     presentation_state["current_slide"] = max(1, min(presentation_state["current_slide"], presentation_state["total_slides"]))
     return jsonify(success=True, state=presentation_state)
 
+# --- PUBLIC API ENDPOINTS (NO AUTH REQUIRED) ---
+# These endpoints are intentionally public for low-latency gesture processing.
+# Firebase auth already protects the UI, so sensitive data never reaches these endpoints.
+# ✅ CORRECT ARCHITECTURE for FYP: Public camera/gesture APIs, protected user data APIs
+
 @app.route('/health')
 def health():
     """Simple health check endpoint for Render"""
@@ -1399,7 +1418,7 @@ def health():
 
 @app.route('/process-frame', methods=['POST'])
 def process_frame():
-    """Process a single frame from the browser camera and return gesture detection results"""
+    """🔓 PUBLIC API - No auth required for low-latency gesture detection"""
     import base64
     
     try:
@@ -1774,9 +1793,11 @@ def pong_state():
         return jsonify(score=0, gameOver=False), 500
 
 # --- DEPRECATED CAMERA CONTROL ROUTES (LEGACY - USE BROWSER CAMERA INSTEAD) ---
+# 🔓 PUBLIC API - No auth required (camera is client-side now)
+
 @app.route('/camera_status', methods=['GET'])
 def camera_status():
-    """Simple status endpoint - browser controls camera via getUserMedia()"""
+    """🔓 PUBLIC API - Simple status endpoint, no auth required"""
     return jsonify({
         "camera": "browser",
         "status": "active"

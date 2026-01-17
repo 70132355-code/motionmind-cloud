@@ -1405,6 +1405,7 @@ def process_frame():
     try:
         data = request.json
         if not data or 'frame' not in data:
+            print("❌ No frame in request data")
             return jsonify(error="No frame received"), 400
         
         # ✅ STEP 2 — CORRECT FRAME DECODING
@@ -1414,9 +1415,10 @@ def process_frame():
         frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
         
         if frame is None:
+            print("❌ Failed to decode frame")
             return jsonify(error="Failed to decode image"), 400
         
-        # ✅ STEP 6 — DEBUG LOGGING
+        # 🔥 FIX 7 — DEBUG LOGGING (VERIFY ENDPOINT IS HIT)
         print(f"📸 Frame received: {frame.shape}")
         
         # ✅ STEP 4 — RUN MEDIAPIPE ON FRAME

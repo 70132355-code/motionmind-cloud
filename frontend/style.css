@@ -18,6 +18,12 @@ html, body {
   overflow-x: hidden;
 }
 
+/* 🔥 FIX 6 — MIRROR VIDEO FOR USER (UI ONLY) */
+video {
+  transform: scaleX(-1);
+  -webkit-transform: scaleX(-1);
+}
+
 :root {
   /* Modern Color Palette - Keeping your blue/purple/pink theme */
   --primary: #6366f1;

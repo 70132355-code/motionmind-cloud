@@ -1323,7 +1323,12 @@ function startFrameProcessing() {
     canvas.height = video.videoHeight;
     
     const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0);
+    
+    // 🔥 FIX 6 — UN-MIRROR FOR BACKEND (correct orientation for AI)
+    ctx.save();
+    ctx.scale(-1, 1);
+    ctx.drawImage(video, -canvas.width, 0, canvas.width, canvas.height);
+    ctx.restore();
     
     // ✅ STEP 5 — FRONTEND MUST SEND BASE64 FRAME
     const frame = canvas.toDataURL('image/jpeg', 0.7);

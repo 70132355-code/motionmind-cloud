@@ -982,6 +982,12 @@ function checkCameraStatus() {
         }
         throw new Error(`HTTP error! status: ${response.status}`);
       }
+      // Check if response is JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        console.error('[Camera] Backend returned HTML instead of JSON - endpoint may not exist');
+        return null;
+      }
       return response.json();
     })
     .then(data => {
@@ -2674,7 +2680,8 @@ function stopGestureDrawing() {
   }
 }
 
-document.getElementById('undoBtn').addEventListener('click', () => {
+// 🔥 FIX 4 — NULL CHECK FOR EVENT LISTENER
+document.getElementById('undoBtn')?.addEventListener('click', () => {
   strokes.pop();
   redrawCanvas();
 });

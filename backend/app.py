@@ -1465,7 +1465,21 @@ def process_frame():
         return jsonify(error=str(e)), 500
 
 @app.route('/')
+def root():
+    """Root endpoint - API status check"""
+    return jsonify({
+        "status": "MotionMind backend running",
+        "version": "1.0",
+        "endpoints": {
+            "health": "/health",
+            "camera_status": "/camera_status",
+            "process_frame": "/process-frame"
+        }
+    }), 200
+
+@app.route('/index')
 def index():
+    """Legacy HTML index route"""
     try:
         index_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'index.html')
         with open(index_path, 'r', encoding='utf-8') as f:
@@ -1800,7 +1814,8 @@ def camera_status():
     """🔓 PUBLIC API - Simple status endpoint, no auth required"""
     return jsonify({
         "camera": "browser",
-        "status": "active"
+        "status": "ready",
+        "backend": "connected"
     })
 
 @app.route('/start_camera', methods=['POST'])

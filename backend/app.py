@@ -1423,12 +1423,12 @@ def process_frame():
     
     try:
         data = request.json
-        if not data or 'frame' not in data:
-            print("❌ No frame in request data")
-            return jsonify(error="No frame received"), 400
+        if not data or 'image' not in data:
+            print("❌ No image in request data")
+            return jsonify(error="No image received"), 400
         
         # ✅ STEP 2 — CORRECT FRAME DECODING
-        frame_data = data['frame'].split(',')[1]
+        frame_data = data['image'].split(',')[1]
         image_bytes = base64.b64decode(frame_data)
         np_arr = np.frombuffer(image_bytes, np.uint8)
         frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
@@ -1855,4 +1855,9 @@ def cleanup(error):
 # initialize_camera()  # REMOVED
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000, debug=True)
+    # ✅ PRODUCTION-READY: Use environment PORT for Railway/Render deployment
+    port = int(os.environ.get("PORT", 10000))
+    debug_mode = os.environ.get("FLASK_ENV") != "production"
+    
+    print(f"🚀 Starting Flask app on port {port} (debug={debug_mode})")
+    app.run(host="0.0.0.0", port=port, debug=debug_mode)

@@ -35,13 +35,18 @@ import firebase_admin
 from firebase_admin import credentials, auth
 from functools import wraps
 
-# ✅ PRODUCTION: Serve frontend files if they exist (monolithic deployment)
+# ✅ VERCEL FIX: Always create Flask app at module level (required for auto-detection)
+app = Flask(__name__)
+
+# ✅ PRODUCTION: Configure static folders based on deployment mode
 # For separate deployments (Firebase + Railway), frontend files won't exist here
 frontend_folder = os.path.join(os.path.dirname(__file__), '..', 'frontend')
 if os.path.exists(frontend_folder):
-    app = Flask(__name__, static_folder=frontend_folder, template_folder=frontend_folder)
+    app.static_folder = frontend_folder
+    app.template_folder = frontend_folder
 else:
-    app = Flask(__name__, static_folder='.', static_url_path='')
+    app.static_folder = '.'
+    app.static_url_path = ''
 
 app.secret_key = os.environ.get('SECRET_KEY', 'motion-mind-secret-key-change-in-production')
 CORS(app)  # Enable CORS for all routes

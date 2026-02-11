@@ -158,13 +158,8 @@ firebase.auth().onAuthStateChanged(async (user) => {
     
     showScreen('dashboard');
     
-    // Auto-check camera status after authentication
-    setTimeout(() => {
-      if (currentUser && userIdToken) {
-        console.log('[Camera] Checking camera status after auth...');
-        checkCameraStatus();
-      }
-    }, 500);
+    // Camera is browser-controlled now - no backend status check needed
+    console.log('[Camera] Ready - use browser camera controls');
   } else {
     currentUser = null;
     userIdToken = null;
@@ -694,8 +689,8 @@ function showScreen(screenId) {
         profileEmailSpan.textContent = currentUser;
         profileEmailDisplay.textContent = currentUser;
         
-        // Start camera status polling only when authenticated
-        screenStates.dashboard.statusInterval = setAppInterval(() => checkCameraStatus(), 1000, 'dashboard');
+        // Camera status is now frontend-only (cameraRunning variable)
+        // No backend polling needed
         
         // Start gesture updates if camera is active
         if (cameraActive) {
@@ -709,10 +704,7 @@ function showScreen(screenId) {
       // Track whiteboard usage
       whiteboardUsageCount++;
       
-      // Start camera status polling only when authenticated
-      if (currentUser) {
-        screenStates.whiteboard.statusInterval = setAppInterval(() => checkCameraStatus(), 1000, 'whiteboard');
-      }
+      // Camera status is frontend-only now - no backend polling needed
       
       // Start gesture detection and drawing if camera is active
       if (cameraActive) {
@@ -725,10 +717,7 @@ function showScreen(screenId) {
     else if (screenId === 'games') {
       // Track games usage (increment when they actually play a game)
       
-      // Start camera status polling only when authenticated
-      if (currentUser) {
-        screenStates.games.statusInterval = setAppInterval(() => checkCameraStatus(), 1000, 'games');
-      }
+      // Camera status is frontend-only now - no backend polling needed
       
       // Start gesture detection if camera is active
       if (cameraActive) {
@@ -767,10 +756,7 @@ function showScreen(screenId) {
         if (viewerSection) viewerSection.style.display = 'block';
       }
       
-      // Start camera status polling only when authenticated
-      if (currentUser) {
-        screenStates.presentation.statusInterval = setAppInterval(() => checkCameraStatus(), 1000, 'presentation');
-      }
+      // Camera status is frontend-only now - no backend polling needed
       
       // Start gesture detection and presentation control if camera is active
       if (cameraActive) {
@@ -1337,19 +1323,16 @@ function startFrameProcessing() {
     ctx.restore();
     
     // ✅ STEP 5 — FRONTEND MUST SEND BASE64 FRAME
-    const frame = canvas.toDataURL('image/jpeg', 0.7);
+    const imageData = canvas.toDataURL('image/jpeg', 0.7);
     
-    // Use backend URL from config (fallback to relative path for local dev)
-    const backendUrl = typeof BACKEND_URL !== 'undefined' ? BACKEND_URL : '';
-    
+    // Use BACKEND_URL from config.js
     try {
-      const res = await fetch(`${backendUrl}/process-frame`, {
+      const res = await fetch(`${BACKEND_URL}/process-frame`, {
         method: 'POST',
         headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': userIdToken ? `Bearer ${userIdToken}` : ''
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ frame })
+        body: JSON.stringify({ image: imageData })
       });
       
       if (!res.ok) {

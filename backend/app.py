@@ -35,8 +35,15 @@ import firebase_admin
 from firebase_admin import credentials, auth
 from functools import wraps
 
-app = Flask(__name__, static_folder='.', static_url_path='')
-app.secret_key = 'motion-mind-secret-key-change-in-production'  # Change this in production!
+# ✅ PRODUCTION: Serve frontend files if they exist (monolithic deployment)
+# For separate deployments (Firebase + Railway), frontend files won't exist here
+frontend_folder = os.path.join(os.path.dirname(__file__), '..', 'frontend')
+if os.path.exists(frontend_folder):
+    app = Flask(__name__, static_folder=frontend_folder, template_folder=frontend_folder)
+else:
+    app = Flask(__name__, static_folder='.', static_url_path='')
+
+app.secret_key = os.environ.get('SECRET_KEY', 'motion-mind-secret-key-change-in-production')
 CORS(app)  # Enable CORS for all routes
 
 # Initialize Firebase Admin SDK (ONLY if credentials exist)
@@ -1466,10 +1473,20 @@ def process_frame():
 
 @app.route('/')
 def root():
-    """Root endpoint - API status check"""
+    """
+    Root endpoint - Serves frontend if available, otherwise API status
+    For monolithic deployment: serves index.html
+    For API-only deployment: returns JSON status
+    """
+    # If frontend folder exists, serve index.html
+    if hasattr(app, 'static_folder') and app.static_folder and os.path.exists(os.path.join(app.static_folder, 'index.html')):
+        return send_from_directory(app.static_folder, 'index.html')
+    
+    # Otherwise return API status
     return jsonify({
         "status": "MotionMind backend running",
         "version": "1.0",
+        "deployment": "API-only mode",
         "endpoints": {
             "health": "/health",
             "camera_status": "/camera_status",
@@ -1850,6 +1867,23 @@ def restart_camera():
 def cleanup(error):
     if error:
         app.logger.error(f"Error: {error}")
+
+# ✅ MONOLITHIC DEPLOYMENT: Catch-all route for frontend static files
+# This MUST be last so API routes take precedence
+@app.route('/<path:path>')
+def serve_static_files(path):
+    """
+    Serve static files (CSS, JS, images) from frontend folder
+    Only active if frontend folder exists (monolithic deployment)
+    """
+    if hasattr(app, 'static_folder') and app.static_folder and '../frontend' in app.static_folder:
+        try:
+            return send_from_directory(app.static_folder, path)
+        except:
+            # File not found, return 404
+            return jsonify({"error": "File not found", "path": path}), 404
+    # API-only mode, no static files
+    return jsonify({"error": "Endpoint not found"}), 404
 
 # Don't initialize camera on startup
 # initialize_camera()  # REMOVED
